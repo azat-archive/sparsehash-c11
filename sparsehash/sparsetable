@@ -833,6 +833,7 @@ class destructive_two_d_iterator {
 // the array (from 1 .. # of non-empty buckets in the group) is
 // called its "offset."
 
+/// NOTE: sparsegroup is not resize friendly
 template <class T, uint16_t GROUP_SIZE, class Alloc>
 class sparsegroup {
  public:
@@ -1143,6 +1144,8 @@ class sparsegroup {
   // This returns a reference to the inserted item (which is a copy of val).
   // TODO(austern): Make this exception safe: handle exceptions from
   // value_type's copy constructor.
+  //
+  // NOTE: this implementation is not resize()/reserve() friendly
   reference set(size_type i, const_reference val) {
     size_type offset =
         pos_to_offset(bitmap, i);  // where we'll find (or insert)
