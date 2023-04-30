@@ -92,20 +92,33 @@
 
 namespace google {
 
+// Packed pair to reduce memory footprint.
+template <class K, class V>
+struct packed_pair {
+  K first;
+  V second;
+} __attribute__((packed));
+template <class K>
+struct packed_pair<K, void> {
+  K first;
+} __attribute__((packed));
+
 template <class Key, class T, class HashFcn = std::hash<Key>,
           class EqualKey = std::equal_to<Key>,
-          class Alloc = libc_allocator_with_realloc<std::pair<const Key, T>>>
+          class Alloc = libc_allocator_with_realloc<packed_pair<const Key, T>>>
 class sparse_hash_map {
  private:
+  typedef packed_pair<const Key, T> KeyValue;
+
   // Apparently select1st is not stl-standard, so we define our own
   struct SelectKey {
     typedef const Key& result_type;
-    const Key& operator()(const std::pair<const Key, T>& p) const {
+    const Key& operator()(const KeyValue& p) const {
       return p.first;
     }
   };
   struct SetKey {
-    void operator()(std::pair<const Key, T>* value, const Key& new_key) const {
+    void operator()(KeyValue* value, const Key& new_key) const {
       *const_cast<Key*>(&value->first) = new_key;
       // It would be nice to clear the rest of value here as well, in
       // case it's taking up a lot of memory.  We do this by clearing
@@ -115,14 +128,14 @@ class sparse_hash_map {
   };
   // For operator[].
   struct DefaultValue {
-    std::pair<const Key, T> operator()(const Key& key) {
-      return std::make_pair(key, T());
+    KeyValue operator()(const Key& key) {
+      return KeyValue{ key, T() };
     }
   };
 
   // The actual data
   typedef typename sparsehash_internal::key_equal_chosen<HashFcn, EqualKey>::type EqualKeyChosen;
-  typedef sparse_hashtable<std::pair<const Key, T>, Key, HashFcn, SelectKey,
+  typedef sparse_hashtable<KeyValue, Key, HashFcn, SelectKey,
                            SetKey, EqualKeyChosen, Alloc> ht;
   ht rep;
 
